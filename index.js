@@ -35,6 +35,7 @@ async function run() {
     // Send a ping to confirm a successful connection
     const userCollection = client.db("bodyPulse").collection("user");
     const galleryCollection = client.db("bodyPulse").collection("gallery");
+    const subscribersCollection = client.db("bodyPulse").collection("subscribers");
 
     //jwt token start api
 
@@ -122,7 +123,36 @@ async function run() {
       }
     });
     // ---------------------------------User api end--------------------------------------------
+    // -------------------------------Subscribers api start--------------------------------------------
+    app.get("/subscribers", async (req, res) => {
+      try {
+        /* if (req.query.email !== req.decode?.email) {
+          return res.status(403).send("unauthorizes token");
+        } */
+        const result = await subscribersCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
 
+    app.post("/subscribers", async (req, res) => {
+      try {
+        const user = req.body;
+        const query = { email: user.email };
+        const existingUser = await subscribersCollection.findOne(query);
+        if (existingUser) {
+          return res.send({ message: "user alredy exists", insertedId: null });
+        }
+
+        const result = await subscribersCollection.insertOne(req.body);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
+    // ---------------------------------User api end--------------------------------------------
+   
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
