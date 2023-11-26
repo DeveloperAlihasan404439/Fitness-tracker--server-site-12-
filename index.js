@@ -36,9 +36,9 @@ async function run() {
     const userCollection = client.db("bodyPulse").collection("user");
     const galleryCollection = client.db("bodyPulse").collection("gallery");
     const subscribersCollection = client.db("bodyPulse").collection("subscribers");
+    const tarinersCollection = client.db("bodyPulse").collection("tariners");
 
-    //jwt token start api
-
+    // -------------------------------jwt api start--------------------------------------------
     app.post("/jwt", async (req, res) => {
       try {
         const user = req.body;
@@ -63,7 +63,8 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
-    //jwt token end api
+    // -------------------------------jwt api end--------------------------------------------
+    // -------------------------------varifyed api start--------------------------------------------
     const varifyed = async (req, res, next) => {
       try {
         const token = req.cookies?.token;
@@ -81,6 +82,7 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     };
+    // -------------------------------varifyed api start--------------------------------------------
     app.get("/gallery", async (req, res) => {
       try {
         const { offset = 0, limit = 12 } = req.query;
@@ -106,7 +108,6 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
-
     app.post("/users", async (req, res) => {
       try {
         const user = req.body;
@@ -126,9 +127,6 @@ async function run() {
     // -------------------------------Subscribers api start--------------------------------------------
     app.get("/subscribers", async (req, res) => {
       try {
-        /* if (req.query.email !== req.decode?.email) {
-          return res.status(403).send("unauthorizes token");
-        } */
         const result = await subscribersCollection.find().toArray();
         res.send(result);
       } catch (error) {
@@ -151,7 +149,37 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
-    // ---------------------------------User api end--------------------------------------------
+    // ---------------------------------Subscribers api end--------------------------------------------
+      
+    // -------------------------------Tariners api start--------------------------------------------
+    app.get("/tariners", async (req, res) => {
+      try { 
+        const result = await tarinersCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
+    app.patch("/tariners", async (req, res) => {
+      
+      /* try {
+        const result = await tarinersCollection.insertOne(req.body);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      } */
+    });
+    app.post("/tariners", async (req, res) => {
+      try {
+        const result = await tarinersCollection.insertOne(req.body);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
+    // ---------------------------------Tariners api end--------------------------------------------
+      
    
     await client.db("admin").command({ ping: 1 });
     console.log(
