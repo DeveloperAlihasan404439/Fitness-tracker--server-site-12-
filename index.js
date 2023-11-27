@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 const app = express();
 const port = process.env.port || 5000;
@@ -37,6 +37,7 @@ async function run() {
     const galleryCollection = client.db("bodyPulse").collection("gallery");
     const subscribersCollection = client.db("bodyPulse").collection("subscribers");
     const tarinersCollection = client.db("bodyPulse").collection("tariners");
+    const tarinerConfrimCollection = client.db("bodyPulse").collection("confrim_Tariners");
 
     // -------------------------------jwt api start--------------------------------------------
     app.post("/jwt", async (req, res) => {
@@ -82,6 +83,26 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     };
+    const varifyAdmin = async (req, res, next) => {
+      const email = req.decode?.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.rol === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "forbident access" });
+      }
+      next();
+    };
+    /* const varifyTrainer = async (req, res, next) => {
+      const email = req.decode?.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.rol === "trainer";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "forbident access" });
+      }
+      next();
+    }; */
     // -------------------------------varifyed api start--------------------------------------------
     app.get("/gallery", async (req, res) => {
       try {
@@ -104,6 +125,22 @@ async function run() {
         } */
         const result = await userCollection.find().toArray();
         res.send(result);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
+    app.put("/users", async (req, res) => {
+      try {
+      const id = req.query.id;
+      const filter = {_id: new ObjectId(id)}
+      const updatedDoc = {
+        $set: {
+          rol: "admin"
+        }
+      }
+      console.log(filter, updatedDoc)
+      const result = await userCollection.updateOne(filter, updatedDoc)
+      res.send(result);
       } catch (error) {
         res.status(500).send("Internal Server Error");
       }
@@ -161,14 +198,20 @@ async function run() {
       }
     });
 
-    app.patch("/tariners", async (req, res) => {
-      
-      /* try {
-        const result = await tarinersCollection.insertOne(req.body);
-        res.send(result);
+    app.put("/tariners/:id", async (req, res) => {
+      try {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updatedDoc = {
+        $set: {
+          status:"trainer"
+        }
+      }
+      const result = await tarinersCollection.updateOne(filter, updatedDoc)
+      res.send(result);
       } catch (error) {
         res.status(500).send("Internal Server Error");
-      } */
+      }
     });
     app.post("/tariners", async (req, res) => {
       try {
@@ -178,7 +221,33 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
+    app.delete("/confrimTariners", async (req, res) => {
+      try {
+        const id = req.query.id;
+        const filter = {_id: new ObjectId(id)}
+        const result = await tarinersCollection.deleteOne(filter);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
     // ---------------------------------Tariners api end--------------------------------------------
+    app.get("/confrimTariners", async (req, res) => {
+      try {
+        const result = await tarinerConfrimCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
+    app.post("/confrimTariners", async (req, res) => {
+      try {
+        const result = await tarinerConfrimCollection.insertOne(req.body);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
       
    
     await client.db("admin").command({ ping: 1 });
