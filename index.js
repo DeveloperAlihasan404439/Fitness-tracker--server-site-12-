@@ -110,12 +110,32 @@ async function run() {
     // admin dashboard
     app.get("/users",varifyed, async (req, res) => {
       try {
-        console.log("line 111",req.query?.email,req.decode?.email)
         if (req.query?.email !== req.decode?.email) {
           return res.status(403).send("unauthorizes token");
         }
         const result = await userCollection.find().toArray();
         res.send(result);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
+    app.put("/users/:id", async (req, res) => {
+      try {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updatedDoc = {
+        $set: {
+          name: req.body.name,
+          email: req.body.email,
+          location: req.body.location,
+          phone: req.body.phone,
+          age: req.body.age,
+          gender: req.body.gender,
+          photo: req.body.photo,
+        }
+      }
+      const result = await userCollection.updateOne(filter, updatedDoc)
+      res.send(result);
       } catch (error) {
         res.status(500).send("Internal Server Error");
       }
@@ -260,7 +280,7 @@ async function run() {
       }
     });
     // ---------------------------------Tariners api end--------------------------------------------
-    app.get("/confrimTariners/:id",varifyed,varifyAdmin, async (req, res) => {
+    app.get("/confrimTariners/:id",varifyed, async (req, res) => {
       try { 
         const id = req.params.id;
         const filter = {_id: new ObjectId(req.params.id)}
@@ -290,11 +310,24 @@ async function run() {
      // ---------------------------------tariners dashrord api end--------------------------------------------
      app.get("/class", async (req, res) => {
       try {
-        const email = req.query.email;
+        /* const email = req.query.email;
         if (email !== req?.decode?.email) {
           return res.status(401).send({ message: "unauthorize access" });
-        }
+        } */
         const result = await classCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
+     app.get("/class/:id", async (req, res) => {
+      try {
+        const email = req.query.email;
+        /* if (email !== req?.decode?.email) {
+          return res.status(401).send({ message: "unauthorize access" });
+        } */
+        const filter = {_id: new ObjectId(req.params.id)}
+        const result = await classCollection.findOne(filter);
         res.send(result);
       } catch (error) {
         res.status(500).send("Internal Server Error");
