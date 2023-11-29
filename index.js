@@ -39,6 +39,8 @@ async function run() {
     const tarinersCollection = client.db("bodyPulse").collection("tariners");
     const tarinerConfrimCollection = client.db("bodyPulse").collection("confrim_Tariners");
     const classCollection = client.db("bodyPulse").collection("allClass");
+    const memborCollection = client.db("bodyPulse").collection("user_book_class");
+    const paymentCollection = client.db("bodyPulse").collection("user_book_payment");
 
     // -------------------------------jwt api start--------------------------------------------
     app.post("/jwt", async (req, res) => {
@@ -280,9 +282,8 @@ async function run() {
       }
     });
     // ---------------------------------Tariners api end--------------------------------------------
-    app.get("/confrimTariners/:id",varifyed, async (req, res) => {
-      try { 
-        const id = req.params.id;
+    app.get("/tarinerApply/:id", async (req, res) => {
+        try{
         const filter = {_id: new ObjectId(req.params.id)}
         const result = await tarinerConfrimCollection.findOne(filter);
         res.send(result);
@@ -310,11 +311,16 @@ async function run() {
      // ---------------------------------tariners dashrord api end--------------------------------------------
      app.get("/class", async (req, res) => {
       try {
-        /* const email = req.query.email;
-        if (email !== req?.decode?.email) {
-          return res.status(401).send({ message: "unauthorize access" });
-        } */
         const result = await classCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
+     app.get("/tarinerApply/class/:email", async (req, res) => {
+      try {
+        const filter = {tranier_email: req.params.email}
+        const result = await classCollection.find(filter).toArray();
         res.send(result);
       } catch (error) {
         res.status(500).send("Internal Server Error");
@@ -333,6 +339,10 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
+    app.get('/featured/class', async (req, res) => {
+      const result = await classCollection.find().sort({ _id: 1 }).limit(4).toArray()
+      res.send(result)
+  })
      app.post("/class", async (req, res) => {
       try {
         const result = await classCollection.insertOne(req.body);
@@ -342,7 +352,56 @@ async function run() {
       }
     });
      // ---------------------------------gallery api end--------------------------------------------
-    app.get("/gallery", async (req, res) => {
+    app.get('/userBooking/class/list', async(req, res)=>{
+      const filter = {user_email: req.query.email}
+      const result = await memborCollection.find(filter).toArray()
+      res.send(result)
+    })
+    app.get('/userBooking/member/list', async(req, res)=>{
+      const filter = {tranier_email: req.query.email}
+      const result = await memborCollection.find(filter).toArray()
+      res.send(result)
+    })
+    app.post('/userBooking/class', async(req, res)=>{
+      const result = await memborCollection.insertOne(req.body)
+      res.send(result)
+    })
+    // ---------------------------------gallery api end--------------------------------------------
+    app.get("/membor/payment", async (req, res) => {
+      try {
+        const email = req.query.email;
+        const query = { email: email };
+        const resutl = await memborCollection.find(query).toArray();
+        res.send(resutl);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
+    app.get("/payment", varifyed, async (req, res) => {
+      try {
+        const email = req.query?.email;
+        if (email !== req.decode?.email) {
+          return res.status(403).send("forbidient access");
+        }
+        const query = {email: email}
+        const resutl = await paymentCollection.find(query).toArray();
+        res.send(resutl);
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
+    app.post("/payment", async (req, res) => {
+      const payment = req.body;
+      const resutl = await paymentCollection.insertOne(payment);
+      /* const query = {
+        _id: {
+          $in: payment.cartId.map((id) => new ObjectId(id)),
+        },
+      }; */
+      /* const deletePayment = await itemsBistroCollection.deleteMany(query);
+      res.send({ resutl, deletePayment }); */
+    });
+     app.get("/gallery", async (req, res) => {
       try {
         const { offset = 0, limit = 12 } = req.query;
         const result = await galleryCollection
