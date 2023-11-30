@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -5,12 +6,14 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 const app = express();
 const port = process.env.port || 5000;
-require("dotenv").config();
 const stripe = require("stripe")(process.env.PAYMENT_SK);
 
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [
+      "http://localhost:5173",
+      "http://bodypulse-assignament-12.surge.sh"
+    ],
     credentials: true,
   })
 );
@@ -44,7 +47,7 @@ async function run() {
     const paymentCollection = client.db("bodyPulse").collection("user_book_payment");
 
     // -------------------------------jwt api start--------------------------------------------
-    app.post("/jwt", async (req, res) => {
+    /* app.post("/jwt", async (req, res) => {
       try {
         const user = req.body;
         const token = jwt.sign(user, process.env.JWT_TOKEN, {
@@ -52,22 +55,39 @@ async function run() {
         });
         res
           .cookie("token", token, {
-            httpOnly: true,
-            secure: false,
+            secure: process.env.NODE_ENV === 'production', 
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
           })
           .send({ message: "success" });
       } catch (error) {
         res.status(500).send("Internal Server Error");
       }
-    });
-    app.post("/logout", async (req, res) => {
-      try {
-        const user = req.body;
-        res.clearCookie("token", { maxAge: 0 }).send({ message: "success" });
-      } catch (error) {
-        res.status(500).send("Internal Server Error");
-      }
-    });
+    }); */
+
+    app.post('/jwt', async (req, res) => {
+      const user = req.body
+      const token = jwt.sign(user, process.env.JWT_TOKEN, { expiresIn: '1h' })
+
+      res.cookie('token', token, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'none'
+
+      }).send({ success: true })
+  })
+
+  //Remove token after logout the user
+  app.post('/logout', async (req, res) => {
+      const user = req.body
+      console.log("User: ", user);
+      res.clearCookie('token', {
+          maxAge: 0,
+          secure: process.env.NODE_ENV === 'production' ? true : false,
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      })
+          .send({ status: true })
+  })
+    
     // -------------------------------jwt api end--------------------------------------------
     // -------------------------------varifyed api start--------------------------------------------
     const varifyed = async (req, res, next) => {
@@ -344,10 +364,6 @@ async function run() {
       const result = await classCollection.find().sort({ _id: 1 }).limit(6).toArray()
       res.send(result)
   })
- /*    app.get('/commentunty/class', async (req, res) => {
-      const result = await classCollection.find().sort({ _id: 1 }).limit(6).toArray()
-      res.send(result)
-  }) */
      app.post("/class", async (req, res) => {
       try {
         const result = await classCollection.insertOne(req.body);
@@ -415,11 +431,22 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
+    app.get("/payment/data/history", async (req, res) => {
+      const filter = {user_email: req.query.email}
+      const resutl = await paymentCollection.find(filter).toArray();
+      res.send(resutl)
+    });
+    // admin
+    app.get("/payment/data", async (req, res) => {
+      const resutl = await paymentCollection.find().toArray();
+      res.send(resutl)
+    });
     app.post("/payment/data", async (req, res) => {
       const payment = req.body;
       const resutl = await paymentCollection.insertOne(payment);
       res.send(resutl)
     });
+    
      app.get("/gallery", async (req, res) => {
       try {
         const { offset = 0, limit = 12 } = req.query;
@@ -433,7 +460,7 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
