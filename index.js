@@ -1,25 +1,14 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const jwt = require("jsonwebtoken");
 const app = express();
 const port = process.env.port || 5000;
 const stripe = require("stripe")(process.env.PAYMENT_SK);
 
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "http://bodypulse-assignament-12.surge.sh"
-    ],
-    credentials: true,
-  })
-);
+app.use(cors());
 // app.use(express.static("public"));
 app.use(express.json());
-app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.wjgws1x.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -46,96 +35,10 @@ async function run() {
     const memborCollection = client.db("bodyPulse").collection("user_book_class");
     const paymentCollection = client.db("bodyPulse").collection("user_book_payment");
 
-    // -------------------------------jwt api start--------------------------------------------
-    /* app.post("/jwt", async (req, res) => {
-      try {
-        const user = req.body;
-        const token = jwt.sign(user, process.env.JWT_TOKEN, {
-          expiresIn: "1h",
-        });
-        res
-          .cookie("token", token, {
-            secure: process.env.NODE_ENV === 'production', 
-                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
-          })
-          .send({ message: "success" });
-      } catch (error) {
-        res.status(500).send("Internal Server Error");
-      }
-    }); */
-
-    app.post('/jwt', async (req, res) => {
-      const user = req.body
-      const token = jwt.sign(user, process.env.JWT_TOKEN, { expiresIn: '1h' })
-
-      res.cookie('token', token, {
-          httpOnly: true,
-          secure: true,
-          sameSite: 'none'
-
-      }).send({ success: true })
-  })
-
-  //Remove token after logout the user
-  app.post('/logout', async (req, res) => {
-      const user = req.body
-      console.log("User: ", user);
-      res.clearCookie('token', {
-          maxAge: 0,
-          secure: process.env.NODE_ENV === 'production' ? true : false,
-          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-      })
-          .send({ status: true })
-  })
-    
-    // -------------------------------jwt api end--------------------------------------------
-    // -------------------------------varifyed api start--------------------------------------------
-    const varifyed = async (req, res, next) => {
-      try {
-        const token = req.cookies?.token;
-        if (!token) {
-          return res.status(401).send("unauthorizs token");
-        }
-        jwt.verify(token, process.env.JWT_TOKEN, (err, decode) => {
-          if (err) {
-            return res.status(401).send("unauthorizs token");
-          }
-          req.decode = decode;
-          next();
-        });
-      } catch (error) {
-        res.status(500).send("Internal Server Error");
-      }
-    };
-    const varifyAdmin = async (req, res, next) => {
-      const email = req.decode?.email;
-      const query = { email: email };
-      const user = await userCollection.findOne(query);
-      const isAdmin = user?.rol === "admin";
-      if (!isAdmin) {
-        return res.status(403).send({ message: "forbident access" });
-      }
-      next();
-    };
-    const varifyTrainer = async (req, res, next) => {
-      const email = req.decode?.email;
-      const query = { email: email };
-      const user = await tarinerConfrimCollection.findOne(query);
-      const isAdmin = user?.status === "trainer";
-      if (!isAdmin) {
-        return res.status(403).send({ message: "forbident access" });
-      }
-      next();
-    };
-    // -------------------------------varifyed api start--------------------------------------------
-   
     // -------------------------------User api start--------------------------------------------
     // admin dashboard
-    app.get("/users",varifyed, async (req, res) => {
+    app.get("/users",async (req, res) => {
       try {
-        if (req.query?.email !== req.decode?.email) {
-          return res.status(403).send("unauthorizes token");
-        }
         const result = await userCollection.find().toArray();
         res.send(result);
       } catch (error) {
@@ -164,12 +67,9 @@ async function run() {
       }
     });
     // admin dashboard
-    app.get("/users/admin", varifyed,varifyAdmin, async (req, res) => {
+    app.get("/users/admin",  async (req, res) => {
       try {
         const email = req.query.email;
-        if (email !== req?.decode?.email) {
-          return res.status(401).send({ message: "unauthorize access" });
-        }
         const query = { email: email };
         const user = await userCollection.findOne(query);
         let admin = false;
@@ -182,12 +82,9 @@ async function run() {
       }
     });
     // trainer dashboard
-    app.get("/users/trainer", varifyed,varifyTrainer, async (req, res) => {
+    app.get("/users/trainer",  async (req, res) => {
       try {
         const email = req.query.email;
-        if (email !== req?.decode?.email) {
-          return res.status(401).send({ message: "unauthorize access" });
-        }
         const query = { email: email };
         const user = await tarinerConfrimCollection.findOne(query);
         let admin = false;
@@ -199,7 +96,7 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
-    app.put("/users",varifyed,varifyAdmin, async (req, res) => {
+    app.put("/users", async (req, res) => {
       try {
       const id = req.query.id;
       const filter = {_id: new ObjectId(id)}
@@ -208,7 +105,6 @@ async function run() {
           rol: "admin"
         }
       }
-      console.log(filter, updatedDoc)
       const result = await userCollection.updateOne(filter, updatedDoc)
       res.send(result);
       } catch (error) {
@@ -234,7 +130,7 @@ async function run() {
     // -------------------------------Subscribers api start--------------------------------------------
     
     // admin dashboard
-    app.get("/subscribers", varifyed,varifyAdmin, async (req, res) => {
+    app.get("/subscribers", async (req, res) => {
       try {
         const result = await subscribersCollection.find().toArray();
         res.send(result);
@@ -321,7 +217,7 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
-    app.post("/confrimTariners",varifyed,varifyAdmin, async (req, res) => {
+    app.post("/confrimTariners", async (req, res) => {
       try {
         const result = await tarinerConfrimCollection.insertOne(req.body);
         res.send(result);
@@ -349,10 +245,6 @@ async function run() {
     });
      app.get("/class/:id", async (req, res) => {
       try {
-        const email = req.query.email;
-        /* if (email !== req?.decode?.email) {
-          return res.status(401).send({ message: "unauthorize access" });
-        } */
         const filter = {_id: new ObjectId(req.params.id)}
         const result = await classCollection.findOne(filter);
         res.send(result);
@@ -364,6 +256,18 @@ async function run() {
       const result = await classCollection.find().sort({ _id: 1 }).limit(6).toArray()
       res.send(result)
   })
+  app.patch('/updateApplicants/:id', async (req, res) => {
+    const { id } = req.params;
+    const query = { _id: new ObjectId(id) }
+    const job = await classCollection.findOne(query);
+
+    if (job) {
+        const result = await classCollection.updateOne(query, {
+            $inc: { applicants_number: 1 },
+        });
+        res.send(result);
+    }
+});
      app.post("/class", async (req, res) => {
       try {
         const result = await classCollection.insertOne(req.body);
@@ -402,12 +306,9 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
-    app.get("/payment", varifyed, async (req, res) => {
+    app.get("/payment",  async (req, res) => {
       try {
         const email = req.query?.email;
-        if (email !== req.decode?.email) {
-          return res.status(403).send("forbidient access");
-        }
         const query = {email: email}
         const resutl = await paymentCollection.find(query).toArray();
         res.send(resutl);
