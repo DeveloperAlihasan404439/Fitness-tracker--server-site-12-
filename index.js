@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const app = express();
 const port = process.env.port || 5000;
 require("dotenv").config();
+const stripe = require("stripe")(process.env.PAYMENT_SK);
 
 app.use(
   cors({
@@ -340,9 +341,13 @@ async function run() {
       }
     });
     app.get('/featured/class', async (req, res) => {
-      const result = await classCollection.find().sort({ _id: 1 }).limit(4).toArray()
+      const result = await classCollection.find().sort({ _id: 1 }).limit(6).toArray()
       res.send(result)
   })
+ /*    app.get('/commentunty/class', async (req, res) => {
+      const result = await classCollection.find().sort({ _id: 1 }).limit(6).toArray()
+      res.send(result)
+  }) */
      app.post("/class", async (req, res) => {
       try {
         const result = await classCollection.insertOne(req.body);
@@ -360,6 +365,10 @@ async function run() {
     app.get('/userBooking/member/list', async(req, res)=>{
       const filter = {tranier_email: req.query.email}
       const result = await memborCollection.find(filter).toArray()
+      res.send(result)
+    })
+    app.get('/userBooking', async(req, res)=>{
+      const result = await memborCollection.find().toArray()
       res.send(result)
     })
     app.post('/userBooking/class', async(req, res)=>{
@@ -390,16 +399,26 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
-    app.post("/payment", async (req, res) => {
+    app.post("/create-payment-intent", async (req, res) => {
+      try {
+        const { price } = req.body;
+        const amount = parseInt(price * 100);
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (error) {
+        res.status(500).send("Internal Server Error");
+      }
+    });
+    app.post("/payment/data", async (req, res) => {
       const payment = req.body;
       const resutl = await paymentCollection.insertOne(payment);
-      /* const query = {
-        _id: {
-          $in: payment.cartId.map((id) => new ObjectId(id)),
-        },
-      }; */
-      /* const deletePayment = await itemsBistroCollection.deleteMany(query);
-      res.send({ resutl, deletePayment }); */
+      res.send(resutl)
     });
      app.get("/gallery", async (req, res) => {
       try {
